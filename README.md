@@ -16,7 +16,6 @@
 
 Issu d'un parcours scientifique exigeant (Médecine, Biologie), j'ai choisi de me réorienter avec passion vers l'informatique et les infrastructures réseaux. Actuellement en **BTS SIO option SISR** au Lycée Charles de Foucauld à Brest, je monte en compétences sur les environnements Windows Server, Linux et les réseaux.
 
-> 🔍 **Disponible pour un stage du 18 mai au 19 juin 2026** dans une équipe technique à Brest ou environs.
 
 ---
 
