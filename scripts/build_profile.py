@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Génère les cartes SVG du profil GitHub (bibliothèque standard uniquement).
 
-Sorties dans assets/ : stats.svg, languages.svg, calendar.svg, rhythm.svg, projects.svg
+Sorties dans assets/ : stats.svg, languages.svg, contributions.svg, projects.svg
 
 Variables d'environnement (toutes optionnelles) :
   PROFILE_LOGIN    login GitHub (défaut : LucaAuvray)
@@ -164,16 +164,27 @@ def fetch_breakdown():
         "query($l:String!){user(login:$l){contributionsCollection{"
         "totalCommitContributions totalIssueContributions "
         "totalPullRequestContributions totalPullRequestReviewContributions "
-        "restrictedContributionsCount}}}"
+        "restrictedContributionsCount "
+        "commitContributionsByRepository(maxRepositories:8){"
+        "repository{nameWithOwner isPrivate} contributions{totalCount}}}}}"
     )
     body = json.dumps({"query": q, "variables": {"l": LOGIN}}).encode()
     h = {"Authorization": "Bearer " + TOKEN, "Content-Type": "application/json"}
     c = json.loads(http("https://api.github.com/graphql", h, body))["data"]["user"]["contributionsCollection"]
+    repos = sorted(
+        [(r["repository"]["nameWithOwner"], r["contributions"]["totalCount"], r["repository"]["isPrivate"])
+         for r in c["commitContributionsByRepository"]],
+        key=lambda r: -r[1],
+    )
     return {
-        "Commits": c["totalCommitContributions"] + c["restrictedContributionsCount"],
-        "Pull requests": c["totalPullRequestContributions"],
-        "Reviews": c["totalPullRequestReviewContributions"],
-        "Tickets": c["totalIssueContributions"],
+        "counts": {
+            "Commits": c["totalCommitContributions"] + c["restrictedContributionsCount"],
+            "Pull requests": c["totalPullRequestContributions"],
+            "Reviews": c["totalPullRequestReviewContributions"],
+            "Tickets": c["totalIssueContributions"],
+        },
+        "repos": repos,
+        "restricted": c["restrictedContributionsCount"],
     }
 
 
@@ -408,21 +419,27 @@ def card_languages(s, data):
 
 
 # ----------------------------------------------------------------------------
-# Carte 3 : calendrier
+# Carte 3 : contributions = calendrier + aperçu de l'activité (comme le bloc natif GitHub)
 # ----------------------------------------------------------------------------
-def card_calendar(s, data):
-    w, h = 840, 232
+def card_contributions(s, data):
+    bd = data.get("breakdown")
+    counts = bd["counts"] if bd else None
+    show_overview = bool(counts and sum(counts.values()) > 0)
+    w = 840
+    h = 548 if show_overview else 236
     defs = base_defs("") + (
-        '<filter id="halo" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="2.6" result="b"/>'
+        '<filter id="halo" x="-80%%" y="-80%%" width="260%%" height="260%%"><feGaussianBlur stdDeviation="2.6" result="b"/>'
         '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
+        '<linearGradient id="rad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%s" stop-opacity=".55"/>'
+        '<stop offset="1" stop-color="%s" stop-opacity=".12"/></linearGradient>' % (ACCENT, ACCENT)
     )
     cell, gap = 11, 3
     pitch = cell + gap
     gx, gy = 58, 90
     b = [caption(24, 36, "Contributions")]
     b.append(
-        '<text x="%d" y="%d" font-size="12.5" text-anchor="end" style="fill:%s"><tspan class="m" font-weight="700" style="fill:%s">%d</tspan> sur les 12 derniers mois</text>'
-        % (w - 24, 36, MUTED, ACCENT, s["total"])
+        '<text x="%d" y="36" font-size="12.5" text-anchor="end" style="fill:%s"><tspan class="m" font-weight="700" style="fill:%s">%d</tspan> sur les 12 derniers mois</text>'
+        % (w - 24, MUTED, ACCENT, s["total"])
     )
 
     glow, flat, marks = [], [], []
@@ -439,11 +456,9 @@ def card_calendar(s, data):
     b.append('<g filter="url(#halo)">%s</g>' % "".join(glow))
     b.append("".join(marks))
 
-    # mois
-    last_x = -100
-    seen = None
+    last_x, seen = -100, None
     for d, _, _ in s["days"]:
-        if d.weekday() == 6:  # dimanche = début de colonne
+        if d.weekday() == 6:
             key = (d.year, d.month)
             if key != seen:
                 seen = key
@@ -451,11 +466,9 @@ def card_calendar(s, data):
                 if x - last_x >= 40 and x < gx + 53 * pitch - 24:
                     b.append('<text x="%d" y="%d" font-size="11" style="fill:%s">%s</text>' % (x, gy - 12, MUTED, MONTHS[d.month - 1]))
                     last_x = x
-    # jours
     for lab, row in (("Lun", 1), ("Mer", 3), ("Ven", 5)):
         b.append('<text x="24" y="%d" font-size="10.5" style="fill:%s">%s</text>' % (gy + row * pitch + 9, MUTED, lab))
 
-    # pied : faits + légende
     fy = gy + 7 * pitch + 22
     best = s["best"]
     b.append(
@@ -468,92 +481,71 @@ def card_calendar(s, data):
     for i, c in enumerate(LEVELS):
         b.append('<rect x="%d" y="%d" width="%d" height="%d" rx="3" fill="%s"/>' % (lx + i * pitch, fy - 10, cell, cell, c))
     b.append('<text x="%d" y="%d" font-size="11" style="fill:%s">Plus</text>' % (lx + 5 * pitch + 4, fy, MUTED))
-    return svg(w, h, "".join(b), defs, "Calendrier des contributions GitHub")
 
+    if not show_overview:
+        return svg(w, h, "".join(b), defs, "Calendrier des contributions GitHub")
 
-# ----------------------------------------------------------------------------
-# Carte 4 : rythme (liste + radar hebdomadaire)
-# ----------------------------------------------------------------------------
-def card_rhythm(s, data):
-    w, h = 840, 276
-    defs = base_defs("") + (
-        '<linearGradient id="rad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="%s" stop-opacity=".55"/>'
-        '<stop offset="1" stop-color="%s" stop-opacity=".12"/></linearGradient>' % (ACCENT, ACCENT)
-    )
-    b = [caption(24, 36, "Rythme")]
-    wd = s["weekday"]
-    fav = DAYS[max(range(7), key=lambda i: wd[i])]
-    tm = s["top_month"]
-    la = s["last_active"]
-    if la is None:
-        ago = "—"
-    else:
-        n = (s["today"] - la).days
-        ago = "aujourd'hui" if n == 0 else ("hier" if n == 1 else "il y a %d j" % n)
-    rows = [
-        ("Jour le plus actif", fav),
-        ("Mois le plus actif", "%s %d" % (MONTHS[tm[1] - 1], tm[0]) if tm else "—"),
-        ("Série la plus longue", "%d j" % s["longest"]),
-        ("Moyenne par jour actif", "%.1f" % s["avg"]),
-        ("Dernière activité", ago),
-    ]
-    for i, (lab, val) in enumerate(rows):
-        y = 80 + i * 32
-        b.append('<text x="24" y="%d" font-size="13" style="fill:%s">%s</text>' % (y, MUTED, esc(lab)))
-        b.append('<text class="m" x="392" y="%d" font-size="13.5" font-weight="600" text-anchor="end">%s</text>' % (y, esc(val)))
-        b.append('<line x1="24" y1="%d" x2="392" y2="%d" stroke="%s"/>' % (y + 12, y + 12, LINE))
+    # ---- aperçu de l'activité -------------------------------------------------
+    top = fy + 26
+    b.append('<line x1="24" y1="%d" x2="%d" y2="%d" stroke="%s"/>' % (top, w - 24, top, LINE))
+    b.append(caption(24, top + 34, "Aperçu de l'activité"))
 
-    bd = data.get("breakdown")
-    if bd and sum(bd.values()) > 0:
-        tot = sum(bd.values())
-        clip = '<clipPath id="bk"><rect x="24" y="240" width="368" height="6" rx="3"/></clipPath>'
-        defs += clip
-        x = 24.0
-        seg = []
-        lg = []
-        for i, (name, v) in enumerate(bd.items()):
-            if v <= 0:
-                continue
-            sw = 368 * v / tot
-            seg.append('<rect x="%.1f" y="240" width="%.1f" height="6" fill="%s"/>' % (x, max(sw - 2, 1), LANG_RAMP[i % 4]))
-            x += sw
-        b.append('<g clip-path="url(#bk)">%s</g>' % "".join(seg))
-        lx = 24
-        for i, (name, v) in enumerate(bd.items()):
-            if v <= 0:
-                continue
-            b.append('<circle cx="%d" cy="263" r="3.5" fill="%s"/>' % (lx + 3, LANG_RAMP[i % 4]))
-            t = "%s %d%%" % (name, round(100 * v / tot))
-            b.append('<text x="%d" y="267" font-size="10.5" style="fill:%s">%s</text>' % (lx + 12, MUTED, esc(t)))
-            lx += 12 + len(t) * 6.2 + 14
+    # gauche : dépôts
+    ly = top + 78
+    b.append('<text x="24" y="%d" font-size="12.5" style="fill:%s">Contribué à</text>' % (ly, MUTED))
+    repos = [r for r in bd.get("repos", []) if r[1] > 0][:5]
+    restricted = bd.get("restricted", 0)
+    mx = max([r[1] for r in repos] + [restricted, 1])
+    y = ly + 32
+    for name, n, private in repos:
+        b.append('<circle cx="30" cy="%d" r="3.5" fill="%s"/>' % (y - 4, ACCENT))
+        b.append('<text x="44" y="%d" font-size="13.5" style="fill:%s">%s</text>' % (y, ACCENT, esc(name)))
+        b.append('<rect x="270" y="%d" width="72" height="4" rx="2" fill="#1a2431"/>' % (y - 6))
+        b.append('<rect x="270" y="%d" width="%.1f" height="4" rx="2" fill="%s"/>' % (y - 6, max(72 * n / mx, 3), ACCENT))
+        b.append('<text class="m" x="392" y="%d" font-size="11" text-anchor="end" style="fill:%s">%d</text>' % (y, MUTED, n))
+        y += 30
+    if restricted > 0:
+        b.append('<circle cx="30" cy="%d" r="3.5" fill="none" stroke="%s"/>' % (y - 4, MUTED))
+        b.append('<text x="44" y="%d" font-size="13.5" style="fill:%s">dépôts privés</text>' % (y, SOFT))
+        b.append('<rect x="270" y="%d" width="72" height="4" rx="2" fill="#1a2431"/>' % (y - 6))
+        b.append('<rect x="270" y="%d" width="%.1f" height="4" rx="2" fill="%s"/>' % (y - 6, max(72 * restricted / mx, 3), MUTED))
+        b.append('<text class="m" x="392" y="%d" font-size="11" text-anchor="end" style="fill:%s">%d</text>' % (y, MUTED, restricted))
+    b.append('<text x="24" y="%d" font-size="10.5" style="fill:%s">Nombre de commits sur les 12 derniers mois.</text>' % (h - 30, MUTED))
 
-    # radar
-    cx, cy, R = 624, 148, 82
-    mx = max(wd) or 1
-    ang = [-math.pi / 2 + i * 2 * math.pi / 7 for i in range(7)]
+    # droite : radar à 4 axes
+    cx, cy, R = 612, top + 160, 76
+    tot = sum(counts.values())
+    pct = {k: v / tot for k, v in counts.items()}
+    axes = [("Revue de code", "Reviews", (0, -1)), ("Tickets", "Tickets", (1, 0)), ("Pull requests", "Pull requests", (0, 1)), ("Commits", "Commits", (-1, 0))]
+    mxp = max(pct.values()) or 1
 
-    def pt(i, frac):
-        return cx + R * frac * math.cos(ang[i]), cy + R * frac * math.sin(ang[i])
+    def pt(dx, dy, frac):
+        return cx + dx * R * frac, cy + dy * R * frac
 
     for f in (1 / 3, 2 / 3, 1):
-        pts = " ".join("%.1f,%.1f" % pt(i, f) for i in range(7))
-        b.append('<polygon points="%s" fill="none" stroke="%s" stroke-width="1"/>' % (pts, "#26323f" if f == 1 else LINE))
-    for i in range(7):
-        x, y = pt(i, 1)
-        b.append('<line x1="%d" y1="%d" x2="%.1f" y2="%.1f" stroke="%s"/>' % (cx, cy, x, y, LINE))
-    poly = [pt(i, wd[i] / mx) for i in range(7)]
-    b.append('<polygon points="%s" fill="url(#rad)" stroke="%s" stroke-width="2" stroke-linejoin="round"/>' % (" ".join("%.1f,%.1f" % p for p in poly), ACCENT))
-    for i, (x, y) in enumerate(poly):
-        b.append('<circle cx="%.1f" cy="%.1f" r="3.6" fill="#0b1117" stroke="%s" stroke-width="1.8"/>' % (x, y, ACCENT))
-        lx, ly = pt(i, 1)
-        ox, oy = math.cos(ang[i]) * 16, math.sin(ang[i]) * 16
-        anchor = "middle" if abs(math.cos(ang[i])) < 0.3 else ("start" if math.cos(ang[i]) > 0 else "end")
-        ty = ly + oy + (4 if abs(math.sin(ang[i])) < 0.9 else (-2 if oy < 0 else 12))
-        b.append(
-            '<text x="%.1f" y="%.1f" font-size="12" text-anchor="%s" style="fill:%s">%s <tspan class="m" font-weight="700" style="fill:%s">%d</tspan></text>'
-            % (lx + ox, ty, anchor, MUTED, DAYS_SHORT[i], TEXT, wd[i])
-        )
-    return svg(w, h, "".join(b), defs, "Rythme d'activité sur la semaine")
+        pts = " ".join("%.1f,%.1f" % pt(a[2][0], a[2][1], f) for a in axes)
+        b.append('<polygon points="%s" fill="none" stroke="%s"/>' % (pts, "#26323f" if f == 1 else LINE))
+    for _, _, (dx, dy) in axes:
+        x, y2 = pt(dx, dy, 1)
+        b.append('<line x1="%d" y1="%d" x2="%.1f" y2="%.1f" stroke="%s"/>' % (cx, cy, x, y2, "#2a3847"))
+    poly = [pt(a[2][0], a[2][1], max(pct[a[1]] / mxp, 0.13)) for a in axes]
+    b.append('<polygon points="%s" fill="url(#rad)" stroke="%s" stroke-width="2.2" stroke-linejoin="round"/>' % (" ".join("%.1f,%.1f" % p for p in poly), ACCENT))
+    for (x, y2) in poly:
+        b.append('<circle cx="%.1f" cy="%.1f" r="4" fill="#0b1016" stroke="%s" stroke-width="2"/>' % (x, y2, ACCENT))
+    for label, key, (dx, dy) in axes:
+        p = round(100 * pct[key])
+        if dy != 0:
+            lx_, anchor = cx, "middle"
+            ty = cy + dy * (R + 22)
+            py_, ny_ = (ty - 14, ty) if dy < 0 else (ty + 6, ty + 22)
+        else:
+            lx_ = cx + dx * (R + 16)
+            anchor = "start" if dx > 0 else "end"
+            py_, ny_ = cy - 3, cy + 14
+        b.append('<text class="m" x="%.1f" y="%.1f" font-size="13" font-weight="700" text-anchor="%s">%d%%</text>' % (lx_, py_, anchor, p))
+        b.append('<text x="%.1f" y="%.1f" font-size="11.5" text-anchor="%s" style="fill:%s">%s</text>' % (lx_, ny_, anchor, MUTED, esc(label)))
+    b.append('<line x1="428" y1="%d" x2="428" y2="%d" stroke="%s"/>' % (top + 22, h - 22, LINE))
+    return svg(w, h, "".join(b), defs, "Contributions et aperçu de l'activité GitHub")
 
 
 # ----------------------------------------------------------------------------
@@ -603,10 +595,14 @@ def main():
     cards = {
         "stats.svg": card_stats,
         "languages.svg": card_languages,
-        "calendar.svg": card_calendar,
-        "rhythm.svg": card_rhythm,
+        "contributions.svg": card_contributions,
         "projects.svg": card_projects,
     }
+    for old in ("calendar.svg", "rhythm.svg"):  # anciennes cartes, remplacées par contributions.svg
+        try:
+            os.remove(os.path.join(OUT, old))
+        except FileNotFoundError:
+            pass
     for name, fn in cards.items():
         content = fn(s, data)
         with open(os.path.join(OUT, name), "w", encoding="utf-8") as f:
