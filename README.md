@@ -128,10 +128,6 @@ Trois projets personnels, **conçus, déployés et utilisés au quotidien**. Le 
   <img src="assets/languages.svg" alt="Langages les plus utilisés" width="49%"/>
 </p>
 
-<p align="center">
-  <img src="assets/contributions.svg" alt="Contributions et aperçu de l'activité" width="100%"/>
-</p>
-
 <sub>Cartes régénérées chaque jour par GitHub Actions. Le code qui les produit est dans <a href="scripts/build_profile.py"><code>scripts/build_profile.py</code></a>.</sub>
 
 <a name="parcours"></a>
