@@ -129,11 +129,7 @@ Trois projets personnels, **conçus, déployés et utilisés au quotidien**. Le 
 </p>
 
 <p align="center">
-  <img src="assets/calendar.svg" alt="Calendrier des contributions" width="100%"/>
-</p>
-
-<p align="center">
-  <img src="assets/rhythm.svg" alt="Rythme d'activité sur la semaine" width="100%"/>
+  <img src="assets/contributions.svg" alt="Contributions et aperçu de l'activité" width="100%"/>
 </p>
 
 <sub>Cartes régénérées chaque jour par GitHub Actions. Le code qui les produit est dans <a href="scripts/build_profile.py"><code>scripts/build_profile.py</code></a>.</sub>
