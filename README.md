@@ -73,7 +73,7 @@ Trois projets personnels, **conçus, déployés et utilisés au quotidien**. Le 
 | Projet | Ce que c'est | Ce que ça montre | Stack |
 |:--|:--|:--|:--|
 | **🧠 Mnemo** | App de révision : à partir d'un cours (PDF, photo, DOCX…), génère des flashcards et des QCM et planifie les révisions avec **FSRS** | Un pipeline IA **vérifié en code** plutôt que « espéré » : 9 cours de référence, couverture de 93 à 95 %, 0 valeur inventée sur 691 cartes. Déploiement scripté, sauvegarde de la base avant chaque mise à jour | `TypeScript` `React` `Express` `SQLite` `nginx` `systemd` |
-| **🔐 MyPass** | Gestionnaire de mots de passe : un seul coffre chiffré, synchronisé entre mes PC et mon téléphone | **Sécurité applicative** et auto-hébergement : le serveur ne détient aucune clé, rien n'est exposé sur Internet. 3 mois de travail, en service sur mes appareils | `Rust` `Tauri` `WebAssembly` `Axum` `Tailscale` |
+| **🔐 [MyPass](https://github.com/LucaAuvray/MyPass)** | Gestionnaire de mots de passe : un seul coffre chiffré, synchronisé entre mes PC et mon téléphone | **Sécurité applicative** et auto-hébergement : le serveur ne détient aucune clé, rien n'est exposé sur Internet. 3 mois de travail, en service sur mes appareils | `Rust` `Tauri` `WebAssembly` `Axum` `Tailscale` |
 | **🥗 Nutrition** | App iPhone de repas de la semaine : menu composé par Claude, liste de courses au paquet près, suivi des macros, utilisable hors ligne | Une **chaîne complète** sur mon homelab : conteneur LXC sur Proxmox, tâches planifiées, déploiement scripté, accès privé par Tailscale. Les macros sont calculées par le serveur (table Ciqual), jamais par le modèle | `Node.js` `React` `Proxmox` `LXC` `Tailscale` |
 
 <details>
@@ -99,7 +99,7 @@ Trois projets personnels, **conçus, déployés et utilisés au quotidien**. Le 
 - **La solution** : le coffre est un seul fichier chiffré (AES-256-GCM ou ChaCha20-Poly1305, dérivation Argon2) que chaque appareil déchiffre en local avec un **noyau Rust écrit une seule fois**. Un petit serveur Axum, hébergé dans un conteneur LXC sur Proxmox, ne garde que des copies chiffrées et versionnées. Les appareils lui parlent par Tailscale.
 - **Difficulté principale** : faire tourner le même noyau Rust en natif (Tauri) **et** dans le navigateur (WebAssembly) : horloge, aléatoire, dépendances incompatibles avec la cible `wasm32`.
 - **Fonctionnalités** : tableau de bord sécurité (mots de passe faibles, réutilisés, fuites via HIBP), codes TOTP, agent SSH Windows, extension Chrome/Edge, mises à jour automatiques par `.msi` signé.
-- **Liens publics** : [extension navigateur](https://github.com/LucaAuvray/mypass-browser-extension) (fork de KeePassXC-Browser) • [installeur Windows](https://github.com/LucaAuvray/mypass-downloads) • [politique de confidentialité](https://github.com/LucaAuvray/mypass-privacy)
+- **Liens publics** : [code source](https://github.com/LucaAuvray/MyPass) (open source, licence MIT) • [extension navigateur](https://github.com/LucaAuvray/mypass-browser-extension) (fork de KeePassXC-Browser) • [installeur Windows](https://github.com/LucaAuvray/mypass-downloads) • [politique de confidentialité](https://github.com/LucaAuvray/mypass-privacy)
 
 </details>
 
@@ -116,7 +116,9 @@ Trois projets personnels, **conçus, déployés et utilisés au quotidien**. Le 
 
 </details>
 
-> 🔒 Mnemo, MyPass et Nutrition sont des dépôts privés. Je peux montrer le code et les démos en entretien.
+> 🔓 **MyPass est open source** : le code est public sur [LucaAuvray/MyPass](https://github.com/LucaAuvray/MyPass) (licence MIT).
+>
+> 🔒 Mnemo et Nutrition sont des dépôts privés. Je peux montrer le code et les démos en entretien.
 
 **Autres dépôts :** [⚽ KZ United](https://github.com/LucaAuvray/kz-united) (site du club de foot que je gère à Brest : Next.js, Prisma, PostgreSQL) • [✍️ Prompteur](https://github.com/LucaAuvray/prompteur) (extension Chrome qui réécrit les prompts) • [🗓️ IAgenda](https://github.com/LucaAuvray/IAgenda) (PWA d'agenda pour étudiants, PHP / MariaDB)
 

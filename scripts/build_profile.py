@@ -62,6 +62,7 @@ PROJECTS = [
         "desc": "Coffre de mots de passe chiffré, synchronisé entre PC et téléphone. Le serveur ne détient aucune clé.",
         "metric": "3 mois de travail · en service",
         "stack": ["Rust", "Tauri", "WASM"],
+        "badge": "open source",
     },
     {
         "name": "Nutrition",
@@ -573,8 +574,10 @@ def card_projects(s, data):
         b.append('<rect x="%d" y="20" width="36" height="36" rx="10" fill="%s" fill-opacity=".09" stroke="%s" stroke-opacity=".35"/>' % (x + 20, ACCENT, ACCENT))
         b.append(icon(p["icon"], x + 20, 20))
         b.append('<text x="%d" y="44" font-size="17" font-weight="650" style="fill:%s">%s</text>' % (x + 68, TEXT, esc(p["name"])))
-        b.append('<rect x="%d" y="26" width="48" height="20" rx="10" fill="none" stroke="%s"/>' % (x + pw - 68, BORDER))
-        b.append('<text class="m" x="%d" y="40" font-size="10" text-anchor="middle" style="fill:%s">privé</text>' % (x + pw - 44, MUTED))
+        badge = p.get("badge", "privé")
+        bw = max(48, len(badge) * 6.2 + 16)
+        b.append('<rect x="%.1f" y="26" width="%.1f" height="20" rx="10" fill="none" stroke="%s"/>' % (x + pw - 20 - bw, bw, BORDER))
+        b.append('<text class="m" x="%.1f" y="40" font-size="10" text-anchor="middle" style="fill:%s">%s</text>' % (x + pw - 20 - bw / 2, MUTED, esc(badge)))
         for j, line in enumerate(textwrap.wrap(p["desc"], 35)[:4]):
             b.append('<text x="%d" y="%d" font-size="12.5" style="fill:%s">%s</text>' % (x + 20, 86 + j * 18, SOFT, esc(line)))
         b.append('<text class="m" x="%d" y="%d" font-size="11.5" font-weight="600" style="fill:%s">%s</text>' % (x + 20, 164, ACCENT, esc(p["metric"])))
