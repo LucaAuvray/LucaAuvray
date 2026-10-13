@@ -39,10 +39,10 @@ Après un parcours scientifique exigeant (Médecine, Biologie), je me suis réor
 
 **En bref**
 
-- 🎯 Je cherche une **alternance en cloud / infrastructure / sécurité**, à partir de **septembre 2027**, pour un cursus bac+5
-- 🏗️ Je ne me contente pas de développer : je **déploie, sécurise et exploite** ce que je construis (systemd, nginx, tunnels, sauvegardes)
-- 🔬 Mon passé scientifique m'a donné une **rigueur de protocole** : procédures suivies, documentées, mesurées
-- 🧪 Je dépanne avec une **démarche de diagnostic** : hypothèse, test, isolement de la cause
+- Je cherche une **alternance en cloud / infrastructure / sécurité**, à partir de **septembre 2027**, pour un cursus bac+5
+- Je ne me contente pas de développer : je **déploie, sécurise et exploite** ce que je construis (systemd, nginx, tunnels, sauvegardes)
+- Mon passé scientifique m'a donné une **rigueur de protocole** : procédures suivies, documentées, mesurées
+- Je dépanne avec une **démarche de diagnostic** : hypothèse, test, isolement de la cause
 
 <a name="stack"></a>
 ## 02 — stack
